@@ -1,40 +1,13 @@
 from pico2d import *
 import game_framework
 import title_state
+from  mario import Mario 
+from world import World
+from background import BackGround
 
-
-class World:
-    def __init__(self):
-        self.image = load_image("Resources/Map/World1-1.png")
-
-    def draw(self):
-       self.image.draw(3280//2, 232//2)
-
-
-class BackGround:
-    def __init__(self):
-        self.image = load_image("Resources/Map/back_ground.png")
-
-    def draw(self):
-        self.image.draw(0, 600, 3280, 1200)
-
-
-class Mario:
-    def __init__(self):
-        self.image = load_image("Resources/Mario/mario_animation_all.png")
-        self.x, self.y = 400, 50
-        self.frame = 0
-        self.dir = 0
-        self.frame_bottom = 0
-
-    def update(self):
-        self.x += self.dir * 5
-        self.frame = (self.frame+1) % 8
-
-    def draw(self):
-        self.image.clip_draw(
-            self.frame * 40, self.frame_bottom, 40, 40, self.x, self.y)
-
+back_ground = None
+world = None
+mario = None
 
 def handle_events():
     global mario
@@ -51,9 +24,11 @@ def handle_events():
                 mario.dir += 1
                 mario.frame_bottom = 120
                 pass
-            elif event.key == SDLK_UP:
-                pass
-            elif event.key == SDLK_DOWN:
+            elif event.key == SDLK_SPACE:
+                if mario.is_jump == 0:
+                    mario.jump(1)
+                elif mario.is_jump ==1 :
+                    mario.jump(2)
                 pass
             elif event.key == SDLK_ESCAPE:
                 game_framework.change_state(title_state)
@@ -66,11 +41,6 @@ def handle_events():
                 mario.dir -= 1
                 mario.frame_bottom = 200
                 pass
-
-
-back_ground = None
-world = None
-mario = None
 
 
 def enter():
