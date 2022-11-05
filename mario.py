@@ -98,6 +98,10 @@ class Mario:
         self.mass = MASS
         self.cur_state = IDLE
         self.cur_state.enter(self,None)
+        self.fire_sound = load_wav("Resources/Sound/fire.wav")
+        self.fire_sound.set_volume(32)
+        self.jump_sound = load_wav("Resources/Sound/jump.wav")
+        self.jump_sound.set_volume(32)
 
     def update(self):
         self.cur_state.do(self)
@@ -148,8 +152,10 @@ class Mario:
 
     def attack(self):
         print("ATTACK")
+        self.fire_sound.play()
         fire = Fire(self.x,self.y,self.face_dir*10)
         game_world.add_object(fire,1)
         
     def jump(self):
         self.is_jump = True 
+        self.jump_sound.play()
