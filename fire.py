@@ -19,4 +19,3 @@ class Fire:
 
         if self.x < 20 or self.x > 800 -20:
             game_world.remove_object(self)
-
