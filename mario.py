@@ -1,10 +1,11 @@
 from pico2d import *
 from fire import Fire
+import game_framework
 import game_world
 
 VELOCITY = 6
 MASS = 2
-
+MOVE_AMOUNT = 7 
 #1: EVENT
 RIGHT_DOWN, LEFT_DOWN, RIGHT_UP, LEFT_UP, A, SPACE = range(6)
 
@@ -37,15 +38,20 @@ class IDLE:
 
     @staticmethod
     def do(self):
-        self.frame = (self.frame + 1) % 8
-    
+        self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
     def draw(self):
-        if self.face_dir == 1:
-            self.frame_bottom = 200
-        elif self.face_dir == -1:
-            self.frame_bottom = 160
+        if self.is_jump:
+            if -1 == self.face_dir:
+                self.frame_bottom = 0
+            elif 1 == self.face_dir:
+                self.frame_bottom = 40
+        else:
+            if self.face_dir == 1:
+                self.frame_bottom = 200
+            elif self.face_dir == -1:
+                self.frame_bottom = 160
         self.image.clip_draw(
-            self.frame * 40, self.frame_bottom, 40, 40, self.x, self.y)
+        int(self.frame) * 40, self.frame_bottom, 40, 40, self.x, self.y)
 
 class RUN:
     def enter(self, event):
@@ -68,16 +74,16 @@ class RUN:
             self.jump()
 
     def do(self):
-        self.frame = (self.frame + 1) % 8
-        self.x += self.dir * 2
+        self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
+        self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
         if self.dir == -1:
             self.frame_bottom = 80
         elif self.dir == 1:
             self.frame_bottom = 120
- 
+    
     def draw(self):
         self.image.clip_draw(
-             self.frame * 40, self.frame_bottom, 40, 40, self.x, self.y)
+             int(self.frame) * 40, self.frame_bottom, 40, 40, self.x, self.y)
 
 # STATE CHANGE
 next_state = {
@@ -85,10 +91,20 @@ next_state = {
     RUN:{RIGHT_DOWN: IDLE, LEFT_DOWN: IDLE, RIGHT_UP: IDLE, LEFT_UP: IDLE, A:RUN, SPACE: RUN}
 }
 
+PIXEL_PER_METER = 10.0 / 0.3
+RUN_SPEED_KPH = 5.0 # km/h 마라토너의 평속
+RUN_SPEED_MPM = RUN_SPEED_KPH * 1000.0 / 60.0
+RUN_SPEED_MPS = RUN_SPEED_MPM / 60.0
+RUN_SPEED_PPS = RUN_SPEED_MPS * PIXEL_PER_METER
+
+TIME_PER_ACTION = 0.5
+ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
+FRAMES_PER_ACTION = 8
+
 class Mario:
     def __init__(self):
         self.image = load_image("Resources/Mario/mario_animation_all.png")
-        self.x, self.y = 200, 50
+        self.x, self.y = 200, 48
         self.frame = 0
         self.dir,self.face_dir = 0,1
         self.event_queue = []
@@ -96,12 +112,15 @@ class Mario:
         self.is_jump = False
         self.velocity = VELOCITY
         self.mass = MASS
+        self.move_amount = MOVE_AMOUNT
         self.cur_state = IDLE
         self.cur_state.enter(self,None)
+
+        # sound 
         self.fire_sound = load_wav("Resources/Sound/fire.wav")
         self.fire_sound.set_volume(32)
         self.jump_sound = load_wav("Resources/Sound/jump.wav")
-        self.jump_sound.set_volume(32)
+        self.jump_sound.set_volume(8)
 
     def update(self):
         self.cur_state.do(self)
@@ -115,32 +134,35 @@ class Mario:
                print("ERROR: ",self.cur_state.__name__, " ", event_name[event])
            
             self.cur_state.enter(self, event) # 진입
-
-        # if self.is_jump > 0:
         
-        #     if self.is_jump == 2:
-        #         self.velocity = VELOCITY
-
+        # JUMP
         if True == self.is_jump:
             if self.velocity > 0:
                 F = (0.5 * self.mass * (self.velocity * self.velocity))
             else:
                 F = -(0.5 * self.mass * (self.velocity * self.velocity))
-        
+
             self.y += round(F)
-        
+
             self.velocity -= 1
             
             if self.y < 50:
                 self.y = 50
                 self.is_jump = False
                 self.velocity = VELOCITY
-            
-            self.x += self.dir * 5
-            self.frame = (self.frame+1) % 8
+
+            if -1 == self.face_dir:
+                self.frame_bottom = 0
+            elif 1 == self.face_dir:
+                self.frame_bottom = 40
+                
+        self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
+        self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
+
 
     def draw(self):
         self.cur_state.draw(self)
+        draw_rectangle(*self.get_bb())
 
     def add_event(self,event):
         self.event_queue.insert(0,event)
@@ -153,9 +175,16 @@ class Mario:
     def attack(self):
         print("ATTACK")
         self.fire_sound.play()
-        fire = Fire(self.x,self.y,self.face_dir*10)
+        fire = Fire(self.x,self.y,self.face_dir*20)
         game_world.add_object(fire,1)
         
     def jump(self):
+        print("JUMP")
         self.is_jump = True 
         self.jump_sound.play()
+
+    def get_bb(self):
+        return self.x-15, self.y - 20, self.x + 15, self.y + 20 
+
+    def handle_collision(self,other,group):
+        print(group)
