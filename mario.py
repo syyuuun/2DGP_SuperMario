@@ -6,6 +6,7 @@ import game_world
 VELOCITY = 6
 MASS = 2
 MOVE_AMOUNT = 7 
+
 #1: EVENT
 RIGHT_DOWN, LEFT_DOWN, RIGHT_UP, LEFT_UP, A, SPACE = range(6)
 
@@ -40,18 +41,36 @@ class IDLE:
     def do(self):
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
     def draw(self):
-        if self.is_jump:
-            if -1 == self.face_dir:
-                self.frame_bottom = 0
-            elif 1 == self.face_dir:
-                self.frame_bottom = 40
-        else:
-            if self.face_dir == 1:
-                self.frame_bottom = 200
-            elif self.face_dir == -1:
-                self.frame_bottom = 160
-        self.image.clip_draw(
-        int(self.frame) * 40, self.frame_bottom, 40, 40, self.x, self.y)
+        if self.size == "SMALL":
+            self.sprite_width = 40
+            self.sprite_height = 25
+            if self.is_jump:
+                if -1 == self.face_dir:
+                    self.frame_bottom = 25
+                elif 1 == self.face_dir:
+                    self.frame_bottom = 50
+            else:
+                if self.face_dir == 1:
+                    self.frame_bottom = 150
+                elif self.face_dir == -1:
+                    self.frame_bottom = 125
+            self.small_mario_image.clip_draw(
+            int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y)
+        elif self.size == "MEDIUM":
+            self.sprite_width = 40
+            self.sprite_height = 40
+            if self.is_jump:
+                if -1 == self.face_dir:
+                    self.frame_bottom = 40
+                elif 1 == self.face_dir:
+                    self.frame_bottom = 80
+            else:
+                if self.face_dir == 1:
+                    self.frame_bottom = 240
+                elif self.face_dir == -1:
+                    self.frame_bottom = 200
+                self.image.clip_draw(
+                int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y)
 
 class RUN:
     def enter(self, event):
@@ -76,13 +95,26 @@ class RUN:
     def do(self):
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
-        if self.dir == -1:
-            self.frame_bottom = 80
-        elif self.dir == 1:
-            self.frame_bottom = 120
+        
+        if self.size == "SMALL":
+            if self.dir == -1:
+                self.frame_bottom = 75
+            elif self.dir == 1:
+                self.frame_bottom = 100
+            pass
+        elif self.size == "MEDIUM":
+            if self.dir == -1:
+                self.frame_bottom = 120
+            elif self.dir == 1:
+                self.frame_bottom = 160
     
     def draw(self):
-        self.image.clip_draw(
+        if self.size == "SMALL":
+            self.small_mario_image.clip_draw(
+             int(self.frame) * self.sprite_width, self.frame_bottom,self.sprite_width, self.sprite_height, self.x, self.y)
+            pass
+        elif self.size == "MEDIUM":
+            self.image.clip_draw(
              int(self.frame) * 40, self.frame_bottom, 40, 40, self.x, self.y)
 
 # STATE CHANGE
@@ -101,18 +133,35 @@ TIME_PER_ACTION = 0.5
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 8
 
+FONT_SIZE = 25
+
 class Mario:
     def __init__(self):
-        self.image = load_image("Resources/Mario/mario_animation_all.png")
-        self.x, self.y = 200, 48
-        self.frame = 0
-        self.dir,self.face_dir = 0,1
-        self.event_queue = []
-        self.frame_bottom = 0
+        # attribute
         self.is_jump = False
         self.velocity = VELOCITY
         self.mass = MASS
         self.move_amount = MOVE_AMOUNT
+        self.num_of_mario_life =5
+        self.size = "SMALL"
+        # image and font 
+        self.image = load_image("Resources/Mario/mario_sprites.png")
+        self.small_mario_image = load_image("Resources/Mario/small_mario_sprites.png")
+        self.mario_heart_image = load_image("Resources/Mario/mario_heart.png")
+        self.font = load_font("Resources/Font/ENCR10B.TTF",FONT_SIZE)
+
+        # position
+        self.x, self.y = 200, 44
+        self.frame = 0
+        self.dir,self.face_dir = 0,1
+        self.sprite_width = 40
+        self.sprite_height = 25
+        self.frame_bottom = 0
+
+        # event
+        self.event_queue = []
+
+        # state
         self.cur_state = IDLE
         self.cur_state.enter(self,None)
 
@@ -123,6 +172,10 @@ class Mario:
         self.jump_sound.set_volume(8)
 
     def update(self):
+
+        if self.num_of_mario_life < 0:
+            pass
+       
         self.cur_state.do(self)
 
         if self.event_queue:
@@ -131,8 +184,8 @@ class Mario:
             try:
                 self.cur_state = next_state[self.cur_state][event]  # 다음 상태를 계산
             except KeyError:
-               print("ERROR: ",self.cur_state.__name__, " ", event_name[event])
-           
+                print("ERROR: ",self.cur_state.__name__, " ", event_name[event])
+        
             self.cur_state.enter(self, event) # 진입
         
         # JUMP
@@ -150,19 +203,28 @@ class Mario:
                 self.y = 50
                 self.is_jump = False
                 self.velocity = VELOCITY
-
-            if -1 == self.face_dir:
-                self.frame_bottom = 0
-            elif 1 == self.face_dir:
-                self.frame_bottom = 40
+            if self.size == "SMALL":
+                if -1 == self.face_dir:
+                    self.frame_bottom = 25
+                elif 1 == self.face_dir:
+                    self.frame_bottom = 50
+            elif self.size == "MEDIUM":
+                if -1 == self.face_dir:
+                    self.frame_bottom = 40
+                elif 1 == self.face_dir:
+                    self.frame_bottom = 80
                 
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
 
-
     def draw(self):
         self.cur_state.draw(self)
+        self.font.draw(0,get_canvas_height()-20,"MARIO LIFE: ",(0,0,0))
+
         draw_rectangle(*self.get_bb())
+
+        for i in range(self.num_of_mario_life):
+           self.mario_heart_image.draw(180 + (i*30),get_canvas_height()-20,20,20)
 
     def add_event(self,event):
         self.event_queue.insert(0,event)
@@ -184,7 +246,11 @@ class Mario:
         self.jump_sound.play()
 
     def get_bb(self):
-        return self.x-15, self.y - 20, self.x + 15, self.y + 20 
+        if self.size == "SMALL":
+            return self.x-12, self.y - 13, self.x + 10, self.y + 15 
+        elif self.size == "MEDIUM":
+            return self.x-15, self.y - 20, self.x + 15, self.y + 20 
 
     def handle_collision(self,other,group):
         print(group)
+        self.num_of_mario_life -=1
