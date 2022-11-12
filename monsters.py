@@ -7,7 +7,7 @@ MOVE_AMOUNT = 5
 class Goomba:
     def __init__(self):
         self.image = load_image("Resources/Monsters/Goomba.png")
-        self.x,self.y = randint(0,800), 58
+        self.x,self.y = randint(400,800), 58
         self.frame = 0
         self.face_dir = -1
         self.frame_bottom = 0
@@ -16,7 +16,8 @@ class Goomba:
         self.sprite_width = 47
         self.sprite_height = 61
         self.is_collision = False
-        self.timer = 5
+        self.timer = 20
+        self.is_die = False
 
     def update(self):
         self.frame = (self.frame+1) % 8
@@ -33,6 +34,9 @@ class Goomba:
 
         if self.is_collision == True:
             self.timer -=1
+            self.is_die = True
+            self.x = -1
+            self.y = -1
             print(self.timer)
             if self.timer < 0:
                 game_world.remove_object(self)
@@ -65,22 +69,23 @@ class Goomba:
     
     def handle_collision(self,other,group):
         print("goomba die")        
-        if group == "mario:goombas":
+        if group == "fire:goombas":
             self.is_collision = True
 
 class Troopa:
     def __init__(self):
         self.image = load_image("Resources/Monsters/Troopa.png")
-        self.x,self.y = randint(0,800), 58
+        self.x,self.y = randint(400,800), 58
         self.frame = 0
         self.face_dir = -1
         self.frame_bottom = 0
         self.temp_x = 0
         self.move_amount = MOVE_AMOUNT
         self.sprite_width  = 53
-        self.sprite_height = 61
+        self.sprite_height = 61 
         self.is_collision = False
-        self.timer = 5
+        self.timer = 20
+        self.is_die = False
 
     def update(self):
         self.frame = (self.frame+1) % 8
@@ -96,6 +101,9 @@ class Troopa:
                 self.face_dir =-1
 
         if self.is_collision == True:
+            self.is_die = True
+            self.x = -1
+            self.y = -1
             self.timer -=1
             print(self.timer)
             if self.timer < 0:
@@ -127,6 +135,5 @@ class Troopa:
 
     def handle_collision(self,other,group):
         print("troopa die")
-    
-        if group == "mario:troopas":
+        if group == "fire:troopas":
             self.is_collision = True
