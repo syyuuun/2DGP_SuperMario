@@ -1,16 +1,21 @@
 from pico2d import *
 from fire import Fire
+from monsters import Goomba
+from monsters import Troopa
+import play_state 
 import game_framework
 import game_world
+import title_state
+import game_over_state
 
 VELOCITY = 6
 MASS = 2
 MOVE_AMOUNT = 7 
 
 #1: EVENT
-RIGHT_DOWN, LEFT_DOWN, RIGHT_UP, LEFT_UP, A, SPACE = range(6)
+RIGHT_DOWN, LEFT_DOWN, RIGHT_UP, LEFT_UP, A, SPACE, LIFE, TIMER = range(8)
 
-event_name = {"RIGHT_DOWN","LEFT_DOWWN", "RIGHT_UP", "LEFT_UP","A", "SPACE" }
+event_name = {"RIGHT_DOWN","LEFT_DOWWN", "RIGHT_UP", "LEFT_UP","A", "SPACE"}
 
 key_event_table = {
     (SDL_KEYDOWN, SDLK_RIGHT) : RIGHT_DOWN,
@@ -22,7 +27,6 @@ key_event_table = {
 }
 
 #2: STATE
-
 class IDLE:
     @staticmethod
     def enter(self,event):
@@ -39,6 +43,8 @@ class IDLE:
 
     @staticmethod
     def do(self):
+        if self.num_of_mario_life <=0:
+            self.add_event(LIFE)
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
     def draw(self):
         if self.size == "SMALL":
@@ -69,8 +75,8 @@ class IDLE:
                     self.frame_bottom = 240
                 elif self.face_dir == -1:
                     self.frame_bottom = 200
-                self.image.clip_draw(
-                int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y)
+            self.image.clip_draw(
+            int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y)
 
 class RUN:
     def enter(self, event):
@@ -93,6 +99,8 @@ class RUN:
             self.jump()
 
     def do(self):
+        if self.num_of_mario_life <=0:
+            self.add_event(LIFE)
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
         
@@ -107,24 +115,47 @@ class RUN:
                 self.frame_bottom = 120
             elif self.dir == 1:
                 self.frame_bottom = 160
-    
+
     def draw(self):
+        
+        self.x,self.y - self.x  - play_state.world.window_left, self.y - play_state.world.window_bottom
+
         if self.size == "SMALL":
             self.small_mario_image.clip_draw(
              int(self.frame) * self.sprite_width, self.frame_bottom,self.sprite_width, self.sprite_height, self.x, self.y)
             pass
         elif self.size == "MEDIUM":
             self.image.clip_draw(
+
              int(self.frame) * 40, self.frame_bottom, 40, 40, self.x, self.y)
+
+class DIE:
+    def enter(self,event):
+        pass
+
+    def exit(self,event):
+        pass
+
+    def do(self):
+        self.die_timer -=1
+        self.frame_bottom = 0
+        self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8
+        self.y -= 5
+        if self.die_timer <=0:
+            game_framework.change_state(game_over_state)
+    def draw(self):
+        self.small_mario_image.clip_draw(
+        int(self.frame) * self.sprite_width, self.frame_bottom,self.sprite_width, self.sprite_height, self.x, self.y)
 
 # STATE CHANGE
 next_state = {
-    IDLE:{RIGHT_DOWN : RUN, LEFT_DOWN: RUN, RIGHT_UP: IDLE, LEFT_UP: IDLE, A: IDLE, SPACE: IDLE },
-    RUN:{RIGHT_DOWN: IDLE, LEFT_DOWN: IDLE, RIGHT_UP: IDLE, LEFT_UP: IDLE, A:RUN, SPACE: RUN}
+    IDLE:{RIGHT_DOWN : RUN, LEFT_DOWN: RUN, RIGHT_UP: IDLE, LEFT_UP: IDLE, A: IDLE, SPACE: IDLE, LIFE: DIE },
+    RUN:{RIGHT_DOWN: IDLE, LEFT_DOWN: IDLE, RIGHT_UP: IDLE, LEFT_UP: IDLE, A:RUN, SPACE: RUN, LIFE: DIE},
+    DIE:{RIGHT_DOWN : DIE, LEFT_DOWN: DIE, RIGHT_UP: DIE, LEFT_UP: DIE, A: DIE, SPACE: DIE}
 }
 
 PIXEL_PER_METER = 10.0 / 0.3
-RUN_SPEED_KPH = 5.0 # km/h 마라토너의 평속
+RUN_SPEED_KPH = 5.0
 RUN_SPEED_MPM = RUN_SPEED_KPH * 1000.0 / 60.0
 RUN_SPEED_MPS = RUN_SPEED_MPM / 60.0
 RUN_SPEED_PPS = RUN_SPEED_MPS * PIXEL_PER_METER
@@ -134,6 +165,7 @@ ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 8
 
 FONT_SIZE = 25
+fire = None
 
 class Mario:
     def __init__(self):
@@ -142,13 +174,18 @@ class Mario:
         self.velocity = VELOCITY
         self.mass = MASS
         self.move_amount = MOVE_AMOUNT
-        self.num_of_mario_life =5
+        self.num_of_mario_life =4
+        self.die_timer = 20
         self.size = "SMALL"
+        self.is_get_fire_flowers = False
+
         # image and font 
         self.image = load_image("Resources/Mario/mario_sprites.png")
         self.small_mario_image = load_image("Resources/Mario/small_mario_sprites.png")
         self.mario_heart_image = load_image("Resources/Mario/mario_heart.png")
         self.font = load_font("Resources/Font/ENCR10B.TTF",FONT_SIZE)
+        
+
 
         # position
         self.x, self.y = 200, 44
@@ -167,15 +204,17 @@ class Mario:
 
         # sound 
         self.fire_sound = load_wav("Resources/Sound/fire.wav")
-        self.fire_sound.set_volume(32)
+        self.fire_sound.set_volume(15)
         self.jump_sound = load_wav("Resources/Sound/jump.wav")
-        self.jump_sound.set_volume(8)
+        self.jump_sound.set_volume(15)
+        self.power_down = load_wav("Resources/Sound/smb_pipe.wav")
+        self.power_down.set_volume(15)
+        self.power_up = load_wav("Resources/Sound/smb_powerup.wav")
+        self.power_up.set_volume(15)
+        self.life_up = load_wav("Resources/Sound/smb_1-up.wav")
+        self.life_up.set_volume(15)
 
     def update(self):
-
-        if self.num_of_mario_life < 0:
-            pass
-       
         self.cur_state.do(self)
 
         if self.event_queue:
@@ -213,7 +252,10 @@ class Mario:
                     self.frame_bottom = 40
                 elif 1 == self.face_dir:
                     self.frame_bottom = 80
-                
+
+        if self.num_of_mario_life <= 0:
+            pass
+
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
 
@@ -234,12 +276,17 @@ class Mario:
             key_event = key_event_table[(event.type,event.key)]
             self.add_event(key_event)
 
-    def attack(self):
-        print("ATTACK")
-        self.fire_sound.play()
-        fire = Fire(self.x,self.y,self.face_dir*20)
-        game_world.add_object(fire,1)
-        
+    def attack(self): 
+        if True == self.is_get_fire_flowers:
+            global fire
+            print("ATTACK")
+            self.fire_sound.play()
+            fire = Fire(self.x,self.y,self.face_dir*20)
+            game_world.add_object(fire,1)
+            game_world.add_collision_group(fire, play_state.troopas, "fire:troopas")
+            game_world.add_collision_group(fire, play_state.goombas, "fire:goombas")
+            game_world.add_collision_group(fire, play_state.koopa, "fire:koopa")
+
     def jump(self):
         print("JUMP")
         self.is_jump = True 
@@ -253,4 +300,27 @@ class Mario:
 
     def handle_collision(self,other,group):
         print(group)
-        self.num_of_mario_life -=1
+        if group == "mario:mushrooms":
+            if self.size == "SMALL":
+                self.size = "MEDIUM"
+            self.power_up.play()
+            
+        elif group == "mario:fire_flowers":
+            if self.size == "SMALL":
+                self.size = "MEDIUM"
+            self.is_get_fire_flowers = True
+            self.power_up.play()
+            
+        elif group == "mario:stars":
+            if self.num_of_mario_life < 5:
+                self.num_of_mario_life +=1
+            self.life_up.play()
+
+        if False == other.is_collision:
+            if group == "mario:troopas" or group == "mario:goombas" or group=="mario:koopa":
+                if self.size == "SMALL":
+                    self.num_of_mario_life -=1
+                elif self.size == "MEDIUM":
+                    self.size = "SMALL"
+                    self.is_get_fire_flowers = False
+                self.power_down.play()
