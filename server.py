@@ -1,0 +1,10 @@
+background = None
+mario = None
+goombas = None
+troopas = None 
+koopa = None
+mushrooms = None
+fire_flowers = None
+stars = None
+floor_bricks = []
+item_blocks = None
