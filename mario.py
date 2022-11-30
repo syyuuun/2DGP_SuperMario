@@ -2,11 +2,16 @@ from pico2d import *
 from fire import Fire
 from monsters import Goomba
 from monsters import Troopa
+from items import FireFlower
+from items import Mushroom
+from items import LifeUpMushroom
 import play_state 
 import game_framework
 import game_world
 import title_state
 import game_over_state
+
+import server
 
 VELOCITY = 6
 MASS = 2
@@ -60,8 +65,10 @@ class IDLE:
                     self.frame_bottom = 150
                 elif self.face_dir == -1:
                     self.frame_bottom = 125
+            
+            sx,sy = self.x - server.background.window_left , self.y -server.background.window_bottom
             self.small_mario_image.clip_draw(
-            int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y)
+            int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, sx, sy)
         elif self.size == "MEDIUM":
             self.sprite_width = 40
             self.sprite_height = 40
@@ -75,8 +82,9 @@ class IDLE:
                     self.frame_bottom = 240
                 elif self.face_dir == -1:
                     self.frame_bottom = 200
+            sx,sy = self.x - server.background.window_left , self.y -server.background.window_bottom
             self.image.clip_draw(
-            int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y)
+            int(self.frame) * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, sx, sy)
 
 class RUN:
     def enter(self, event):
@@ -104,6 +112,14 @@ class RUN:
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
         
+        if "SMALL" == self.size:
+            self.x = clamp(0 + 15, self.x, server.background.w - 1 - 15)
+            self.y = clamp(0 + 15, self.y, server.background.h - 1 - 15)
+        
+        elif "MEDIUM" == self.size:
+            self.x = clamp(0 + 15, self.x, server.background.w - 1 - 15)
+            self.y = clamp(0 + 20, self.y, server.world.h - 1 - 20)
+        
         if self.size == "SMALL":
             if self.dir == -1:
                 self.frame_bottom = 75
@@ -117,17 +133,15 @@ class RUN:
                 self.frame_bottom = 160
 
     def draw(self):
-        
-        self.x,self.y - self.x  - play_state.world.window_left, self.y - play_state.world.window_bottom
-
+        #self.x,self.y - self.x  - play_state.world.window_left, self.y - play_state.world.window_bottom
+        sx,sy = self.x - server.background.window_left , self.y -server.background.window_bottom
         if self.size == "SMALL":
             self.small_mario_image.clip_draw(
-             int(self.frame) * self.sprite_width, self.frame_bottom,self.sprite_width, self.sprite_height, self.x, self.y)
+             int(self.frame) * self.sprite_width, self.frame_bottom,self.sprite_width, self.sprite_height, sx, sy)
             pass
         elif self.size == "MEDIUM":
             self.image.clip_draw(
-
-             int(self.frame) * 40, self.frame_bottom, 40, 40, self.x, self.y)
+             int(self.frame) * 40, self.frame_bottom, 40, 40, sx, sy)
 
 class DIE:
     def enter(self,event):
@@ -144,8 +158,9 @@ class DIE:
         if self.die_timer <=0:
             game_framework.change_state(game_over_state)
     def draw(self):
+        sx,sy = self.x - server.background.window_left , self.y -server.background.window_bottom
         self.small_mario_image.clip_draw(
-        int(self.frame) * self.sprite_width, self.frame_bottom,self.sprite_width, self.sprite_height, self.x, self.y)
+        int(self.frame) * self.sprite_width, self.frame_bottom,self.sprite_width, self.sprite_height, sx, sy)
 
 # STATE CHANGE
 next_state = {
@@ -178,6 +193,7 @@ class Mario:
         self.die_timer = 20
         self.size = "SMALL"
         self.is_get_fire_flowers = False
+        self.is_collision_item_block = False
 
         # image and font 
         self.image = load_image("Resources/Mario/mario_sprites.png")
@@ -185,8 +201,6 @@ class Mario:
         self.mario_heart_image = load_image("Resources/Mario/mario_heart.png")
         self.font = load_font("Resources/Font/ENCR10B.TTF",FONT_SIZE)
         
-
-
         # position
         self.x, self.y = 200, 44
         self.frame = 0
@@ -237,11 +251,13 @@ class Mario:
             self.y += round(F)
 
             self.velocity -= 1
-            
+
             if self.y < 50:
-                self.y = 50
+                self.y = 45
                 self.is_jump = False
                 self.velocity = VELOCITY
+
+            
             if self.size == "SMALL":
                 if -1 == self.face_dir:
                     self.frame_bottom = 25
@@ -258,8 +274,8 @@ class Mario:
 
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
-
-    def draw(self):
+       # print(f"X:{self.x},Y:{self.y}")
+    def draw(self): 
         self.cur_state.draw(self)
         self.font.draw(0,get_canvas_height()-20,"MARIO LIFE: ",(0,0,0))
 
@@ -283,9 +299,9 @@ class Mario:
             self.fire_sound.play()
             fire = Fire(self.x,self.y,self.face_dir*20)
             game_world.add_object(fire,1)
-            game_world.add_collision_group(fire, play_state.troopas, "fire:troopas")
-            game_world.add_collision_group(fire, play_state.goombas, "fire:goombas")
-            game_world.add_collision_group(fire, play_state.koopa, "fire:koopa")
+            game_world.add_collision_group(fire, server.troopas, "fire:troopas")
+            game_world.add_collision_group(fire, server.goombas, "fire:goombas")
+            game_world.add_collision_group(fire, server.koopa, "fire:koopa")
 
     def jump(self):
         print("JUMP")
@@ -293,10 +309,11 @@ class Mario:
         self.jump_sound.play()
 
     def get_bb(self):
+        sx,sy = self.x - server.background.window_left , self.y -server.background.window_bottom
         if self.size == "SMALL":
-            return self.x-12, self.y - 13, self.x + 10, self.y + 15 
+            return sx-12, sy - 13, sx + 10, sy + 8
         elif self.size == "MEDIUM":
-            return self.x-15, self.y - 20, self.x + 15, self.y + 20 
+            return sx-15, sy - 20, sx + 15, sy + 20 
 
     def handle_collision(self,other,group):
         print(group)
@@ -315,6 +332,17 @@ class Mario:
             if self.num_of_mario_life < 5:
                 self.num_of_mario_life +=1
             self.life_up.play()
+
+        elif group == "mario:item_blocks":
+            #print("COLLISIOn mario and item_block")
+            global flower
+            flower = FireFlower(other.x,other.y)
+            game_world.add_object(flower,1)
+            game_world.add_collision_group(server.mario, flower, "mario:fire_flowers")
+            pass
+
+        elif group == "mario:floor_bricks":
+            pass
 
         if False == other.is_collision:
             if group == "mario:troopas" or group == "mario:goombas" or group=="mario:koopa":
