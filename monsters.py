@@ -1,5 +1,7 @@
 from pico2d import *
 import game_world
+import play_state
+import server
 from random import randint
 
 MOVE_AMOUNT = 5
@@ -20,6 +22,8 @@ class Goomba:
         self.is_collision = False
         self.timer = 5
         self.is_die = False
+        self.sx,self.sy = 0,0
+
 
     def update(self):
         self.frame = (self.frame+1) % 8
@@ -44,6 +48,7 @@ class Goomba:
             game_world.remove_object(self)
 
     def draw(self):
+        #self.sx,self.sy = self.x - play_s   
         if self.is_collision == True:
             self.frame_bottom = 164
             self.sprite_height = 54
@@ -56,18 +61,18 @@ class Goomba:
             elif self.face_dir == 1:
                 self.frame_bottom = 0
                 pass
-        
+        self.sx, self.sy = self.x - server.background.window_left, self.y-server.background.window_bottom
         self.image.clip_draw(
-             self.frame * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y
+             self.frame * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.sx, self.sy
         )
         
         draw_rectangle(*self.get_bb())
 
     def get_bb(self):
         if self.face_dir == -1:
-            return self.x - 20, self.y -30, self.x + 10, self.y + 20
+            return self.sx - 20, self.sy -30, self.sx + 10, self.sy + 20
         elif self.face_dir == 1:
-            return self.x - 10, self.y - 30, self.x + 20, self.y + 20
+            return self.sx - 10, self.sy - 30, self.sx + 20, self.sy + 20
     
     def handle_collision(self,other,group):
         print("goomba die")        
@@ -90,6 +95,7 @@ class Troopa:
         self.is_collision = False
         self.timer = 20
         self.is_die = False
+        self.sx,self.sy = 0,0
 
     def update(self):
         self.frame = (self.frame+1) % 8
@@ -124,18 +130,18 @@ class Troopa:
                 self.frame_bottom = 0
             elif self.face_dir == 1:
                 self.frame_bottom = 61
-        
+        self.sx, self.sy = self.x - server.background.window_left, self.y-server.background.window_bottom
         self.image.clip_draw(
-             self.frame * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y
+             self.frame * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.sx, self.sy
         )
         
         draw_rectangle(*self.get_bb())
 
     def get_bb(self):
         if self.face_dir == -1:
-            return self.x - 20, self.y-30, self.x + 10, self.y + 20
+            return self.sx - 20, self.sy-30, self.sx + 10, self.sy + 20
         elif self.face_dir == 1:
-            return self.x -10, self.y - 30, self.x + 20, self.y + 20 
+            return self.sx -10, self.sy - 30, self.sx + 20, self.sy + 20 
 
     def handle_collision(self,other,group):
         print("troopa die")
@@ -156,6 +162,8 @@ class Koopa:
         self.is_spawn = False 
         self.is_attacked = False
         self.hp = 1000 
+
+        self.sx,self.sy = 0,0
     
     def update(self):
         self.frame = (self.frame+1) % 8
@@ -185,13 +193,13 @@ class Koopa:
     
     def draw(self):
 
-
-        self.image.clip_draw(self.frame * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.x, self.y)    
+        self.sx, self.sy = self.x - server.background.window_left, self.y-server.background.window_bottom
+        self.image.clip_draw(self.frame * self.sprite_width, self.frame_bottom, self.sprite_width, self.sprite_height, self.sx, self.sy)    
         
         draw_rectangle(*self.get_bb())
 
     def get_bb(self):
-        return self.x - 50, self.y - 50, self.x + 50, self.y + 50 
+        return self.sx - 50, self.sy - 50, self.sx + 50, self.sy + 50 
         
     def handle_collision(self,other,group):
         if group == "fire:koopa":
