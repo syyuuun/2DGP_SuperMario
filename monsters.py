@@ -103,6 +103,7 @@ class Troopa:
         self.timer = 20
         self.is_die = False
         self.sx,self.sy = 0,0
+        self.die_timer = 0 
 
     def update(self):
         self.frame = (self.frame+1) % 8
@@ -159,6 +160,8 @@ class Troopa:
 class Koopa:
     def __init__(self):
         self.image = load_image("Resources/Monsters/Koopa.png")
+        self.fall_sound = load_music("Resources/Sound/smb_bowserfalls.wav")
+        self.fall_sound.set_volume(15)
         self.x,self.y = 3100, 58
         self.frame = 0
         self.sprite_width  = 90 
@@ -171,12 +174,16 @@ class Koopa:
         self.is_attacked = False
         self.hp = 1000 
         self.attack_timer = 50  
+        self.die_timer = 0
 
         self.sx,self.sy = 0,0
     
     def update(self):
         self.frame = (self.frame+1) % 8
         self.attack_timer -= 1
+        if self.die_timer > 10:
+            game_framework.change_state(game_end_state)
+
         if True == self.is_die:
             self.sprite_width = 101
             self.sprite_height = 63
@@ -198,10 +205,11 @@ class Koopa:
             self.attack()
 
         if self.hp < 0:
-            self.is_die = True 
+            self.is_die = True
         if True == self.is_die:
+            self.fall_sound.play()
+            self.die_timer += 1 
             pass
-            #game_framework.change_state(game_end_state)
     
     def draw(self):
         self.sx, self.sy = self.x - server.background.window_left, self.y-server.background.window_bottom
