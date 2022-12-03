@@ -18,9 +18,9 @@ MASS = 2
 MOVE_AMOUNT = 7 
 
 #1: EVENT
-RIGHT_DOWN, LEFT_DOWN, RIGHT_UP, LEFT_UP, A, SPACE, LIFE, TIMER = range(8)
+RIGHT_DOWN, LEFT_DOWN, RIGHT_UP, LEFT_UP, B,  A, SPACE, LIFE, TIMER = range(9)
 
-event_name = {"RIGHT_DOWN","LEFT_DOWWN", "RIGHT_UP", "LEFT_UP","A", "SPACE"}
+event_name = {"RIGHT_DOWN","LEFT_DOWWN", "RIGHT_UP", "LEFT_UP", "A", "SPACE", "B"}
 
 key_event_table = {
     (SDL_KEYDOWN, SDLK_RIGHT) : RIGHT_DOWN,
@@ -28,6 +28,7 @@ key_event_table = {
     (SDL_KEYUP, SDLK_RIGHT) : RIGHT_UP,
     (SDL_KEYUP, SDLK_LEFT): LEFT_UP,
     (SDL_KEYDOWN, SDLK_a): A,
+    (SDL_KEYDOWN, SDLK_b): B,
     (SDL_KEYDOWN, SDLK_SPACE) : SPACE 
 }
 
@@ -36,15 +37,18 @@ class IDLE:
     @staticmethod
     def enter(self,event):
         self.dir = 0
-        print("ENTER IDLE")
+        #print("ENTER IDLE")
     
     @staticmethod
     def exit(self,event):
-        print("EXIT IDLE")
         if A == event:
             self.attack()
         if SPACE == event:
             self.jump()
+        if B == event:
+            self.use_item()
+       # print("EXIT IDLE")
+
 
     @staticmethod
     def do(self):
@@ -88,7 +92,7 @@ class IDLE:
 
 class RUN:
     def enter(self, event):
-        print("ENTER RUN")
+       # print("ENTER RUN")
         if event == RIGHT_DOWN:
             self.dir+=1
         elif event == LEFT_DOWN: 
@@ -99,26 +103,30 @@ class RUN:
             self.dir +=1
  
     def exit(self,event):
-        print("EXIT RUN")
-        self.face_dir = self.dir
+        #print("EXIT RUN")
         if A == event:
             self.attack()
         if SPACE == event:
             self.jump()
-
+        self.face_dir = self.dir
+        if B == event:
+            self.use_item()
+     
     def do(self):
         if self.num_of_mario_life <=0:
             self.add_event(LIFE)
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
         
+
+
         if "SMALL" == self.size:
             self.x = clamp(0 + 15, self.x, server.background.w - 1 - 15)
             self.y = clamp(0 + 15, self.y, server.background.h - 1 - 15)
         
         elif "MEDIUM" == self.size:
             self.x = clamp(0 + 15, self.x, server.background.w - 1 - 15)
-            self.y = clamp(0 + 20, self.y, server.world.h - 1 - 20)
+            self.y = clamp(0 + 20, self.y, server.background.h - 1 - 20)
         
         if self.size == "SMALL":
             if self.dir == -1:
@@ -164,9 +172,9 @@ class DIE:
 
 # STATE CHANGE
 next_state = {
-    IDLE:{RIGHT_DOWN : RUN, LEFT_DOWN: RUN, RIGHT_UP: IDLE, LEFT_UP: IDLE, A: IDLE, SPACE: IDLE, LIFE: DIE },
-    RUN:{RIGHT_DOWN: IDLE, LEFT_DOWN: IDLE, RIGHT_UP: IDLE, LEFT_UP: IDLE, A:RUN, SPACE: RUN, LIFE: DIE},
-    DIE:{RIGHT_DOWN : DIE, LEFT_DOWN: DIE, RIGHT_UP: DIE, LEFT_UP: DIE, A: DIE, SPACE: DIE}
+    IDLE:{RIGHT_DOWN : RUN, LEFT_DOWN: RUN, RIGHT_UP: IDLE, LEFT_UP: IDLE, A: IDLE, SPACE: IDLE, LIFE: DIE, B: IDLE },
+    RUN:{RIGHT_DOWN: IDLE, LEFT_DOWN: IDLE, RIGHT_UP: IDLE, LEFT_UP: IDLE, A:RUN, SPACE: RUN, LIFE: DIE, B: RUN},
+    DIE:{RIGHT_DOWN : DIE, LEFT_DOWN: DIE, RIGHT_UP: DIE, LEFT_UP: DIE, A: DIE, SPACE: DIE, B:DIE}
 }
 
 PIXEL_PER_METER = 10.0 / 0.3
@@ -180,7 +188,7 @@ ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 8
 
 FONT_SIZE = 25
-fire = None
+fire = None 
 
 class Mario:
     def __init__(self):
@@ -194,11 +202,13 @@ class Mario:
         self.size = "SMALL"
         self.is_get_fire_flowers = False
         self.is_collision_item_block = False
+        self.num_of_flowers =0 
 
         # image and font 
         self.image = load_image("Resources/Mario/mario_sprites.png")
         self.small_mario_image = load_image("Resources/Mario/small_mario_sprites.png")
         self.mario_heart_image = load_image("Resources/Mario/mario_heart.png")
+        self.mario_flower_image = load_image("Resources/Items/fire_flower.png")
         self.font = load_font("Resources/Font/ENCR10B.TTF",FONT_SIZE)
         
         # position
@@ -227,7 +237,8 @@ class Mario:
         self.power_up.set_volume(15)
         self.life_up = load_wav("Resources/Sound/smb_1-up.wav")
         self.life_up.set_volume(15)
-
+        self.get_coin = load_wav("Resources/Sound/smb_coin.wav")
+    
     def update(self):
         self.cur_state.do(self)
 
@@ -257,7 +268,6 @@ class Mario:
                 self.is_jump = False
                 self.velocity = VELOCITY
 
-            
             if self.size == "SMALL":
                 if -1 == self.face_dir:
                     self.frame_bottom = 25
@@ -275,11 +285,12 @@ class Mario:
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8 
         self.x += self.dir * RUN_SPEED_PPS * game_framework.frame_time
        # print(f"X:{self.x},Y:{self.y}")
+    
     def draw(self): 
         self.cur_state.draw(self)
         self.font.draw(0,get_canvas_height()-20,"MARIO LIFE: ",(0,0,0))
 
-        draw_rectangle(*self.get_bb())
+        #draw_rectangle(*self.get_bb())
 
         for i in range(self.num_of_mario_life):
            self.mario_heart_image.draw(180 + (i*30),get_canvas_height()-20,20,20)
@@ -295,7 +306,6 @@ class Mario:
     def attack(self): 
         if True == self.is_get_fire_flowers:
             global fire
-            print("ATTACK")
             self.fire_sound.play()
             fire = Fire(self.x,self.y,self.face_dir*20)
             game_world.add_object(fire,1)
@@ -303,8 +313,15 @@ class Mario:
             game_world.add_collision_group(fire, server.goombas, "fire:goombas")
             game_world.add_collision_group(fire, server.koopa, "fire:koopa")
 
+    def use_item(self):
+        if False == self.is_get_fire_flowers:
+            if self.num_of_flowers > 0:
+                self.is_get_fire_flowers = True
+                self.size = "MEDIUM"
+                self.power_up.play()
+                self.num_of_flowers -= 1
+
     def jump(self):
-        print("JUMP")
         self.is_jump = True 
         self.jump_sound.play()
 
@@ -316,7 +333,6 @@ class Mario:
             return sx-15, sy - 20, sx + 15, sy + 20 
 
     def handle_collision(self,other,group):
-        print(group)
         if group == "mario:mushrooms":
             if self.size == "SMALL":
                 self.size = "MEDIUM"
@@ -325,20 +341,22 @@ class Mario:
         elif group == "mario:fire_flowers":
             if self.size == "SMALL":
                 self.size = "MEDIUM"
+            if True == self.is_get_fire_flowers:
+                self.num_of_flowers += 1
             self.is_get_fire_flowers = True
             self.power_up.play()
             
-        elif group == "mario:stars":
+        elif group == "mario:life_up_mushrooms":
             if self.num_of_mario_life < 5:
                 self.num_of_mario_life +=1
             self.life_up.play()
 
+        elif group == "mario:coins":
+            self.get_coin.play()
+            global RUN_SPEED_PPS
+            RUN_SPEED_PPS += 1
+
         elif group == "mario:item_blocks":
-            #print("COLLISIOn mario and item_block")
-            global flower
-            flower = FireFlower(other.x,other.y)
-            game_world.add_object(flower,1)
-            game_world.add_collision_group(server.mario, flower, "mario:fire_flowers")
             pass
 
         elif group == "mario:floor_bricks":

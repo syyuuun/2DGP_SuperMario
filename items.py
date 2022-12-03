@@ -16,7 +16,7 @@ class Mushroom:
     def draw(self):
         self.sx, self.sy = self.x - server.background.window_left, self.y - server.background.window_bottom
         self.image.draw(self.sx,self.sy)
-        draw_rectangle(*self.get_bb())
+        #draw_rectangle(*self.get_bb())
         pass
 
     def get_bb(self):
@@ -40,7 +40,7 @@ class FireFlower:
     def draw(self):
         self.sx, self.sy = self.x - server.background.window_left, self.y - server.background.window_bottom
         self.image.draw(self.sx,self.sy)
-        draw_rectangle(*self.get_bb())
+        #draw_rectangle(*self.get_bb())
         pass
 
     def get_bb(self):
@@ -63,7 +63,7 @@ class LifeUpMushroom:
     def draw(self):
         self.sx, self.sy = self.x - server.background.window_left, self.y - server.background.window_bottom
         self.image.draw(self.sx,self.sy)
-        draw_rectangle(*self.get_bb())
+        #draw_rectangle(*self.get_bb())
         pass
 
     def get_bb(self):
@@ -77,7 +77,7 @@ class Coin:
     def __init__(self, x = 0, y = 0):
         self.image = load_image("Resources/Items/coin.png")
         self.frame = 0
-        self.x, self.y = 400, 50
+        self.x, self.y = x, y
         self.sprite_width, self.sprite_height = 16,16
         self.is_collision = False
         self.sx, self.sy = 0, 0
@@ -88,7 +88,7 @@ class Coin:
     def draw(self):
         self.sx, self.sy = self.x - server.background.window_left, self.y - server.background.window_bottom
         self.image.clip_draw(self.frame * self.sprite_width, 0, self.sprite_width, self.sprite_height, self.sx, self.sy)
-        draw_rectangle(*self.get_bb())
+        #draw_rectangle(*self.get_bb())
         
 
     def get_bb(self):

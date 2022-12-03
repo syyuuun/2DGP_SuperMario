@@ -27,7 +27,7 @@ class ItemBlocks:
     def draw(self):
         self.sx,self.sy = self.x - server.background.window_left,self.y-server.background.window_bottom
         self.image.draw(self.sx,self.sy)
-        draw_rectangle(*self.get_bb())
+        #draw_rectangle(*self.get_bb())
     
     def update(self):
         pass
@@ -77,7 +77,7 @@ class FloorBrick:
     def draw(self):
         self.sx,self.sy = self.x - server.background.window_left,self.y - server.background.window_bottom
         self.image.draw(self.sx,self.sy)
-        draw_rectangle(*self.get_bb())
+        #draw_rectangle(*self.get_bb())
     
     def update(self):
         pass
